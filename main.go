@@ -111,6 +111,9 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
+	// Mark service as ready
+	utils.SetHealthStatus("OK", "Service is running normally")
+
 	// Block here until signal received
 	<-stop
 	log.Println("Shutting down service...")
