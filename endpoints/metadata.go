@@ -18,6 +18,7 @@ type MetadataResponse struct {
 	Title       string `json:"title,omitempty"`
 	Description string `json:"description,omitempty"`
 	ImageURL    string `json:"image_url,omitempty"`
+	Content     string `json:"content,omitempty"`
 	ContentType string `json:"content_type,omitempty"` // e.g., "image/gif", "text/html"
 	Provider    string `json:"provider,omitempty"`     // e.g., "Tenor", "Giphy"
 	Error       string `json:"error,omitempty"`
@@ -59,59 +60,108 @@ func MetadataHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse HTML to extract metadata
-	tokenizer := html.NewTokenizer(resp.Body)
-	metadata := make(map[string]string)
+	// Parse HTML
+	doc, err := html.Parse(resp.Body)
+	if err != nil {
+		log.Printf("Error parsing HTML for URL %s: %v", targetURL, err)
+		http.Error(w, fmt.Sprintf("Failed to parse HTML: %v", err), http.StatusInternalServerError)
+		return
+	}
 
-	for {
-		tt := tokenizer.Next()
-		if tt == html.ErrorToken {
-			break
-		}
-		if tt == html.StartTagToken || tt == html.SelfClosingTagToken {
-			token := tokenizer.Token()
-			if token.Data == "meta" {
+	metadata := make(map[string]string)
+	var title string
+
+	// Traverse for metadata
+	var traverseMetadata func(*html.Node)
+	traverseMetadata = func(n *html.Node) {
+		if n.Type == html.ElementNode {
+			if n.Data == "meta" {
 				var property, name, content string
-				for _, attr := range token.Attr {
+				for _, attr := range n.Attr {
 					if attr.Key == "property" {
 						property = attr.Val
 					}
-					if attr.Key == "name" { // For Twitter cards
+					if attr.Key == "name" {
 						name = attr.Val
 					}
 					if attr.Key == "content" {
 						content = attr.Val
 					}
 				}
-
 				if strings.HasPrefix(property, "og:") {
 					metadata[property] = content
 				}
-				if strings.HasPrefix(name, "twitter:") { // Also capture Twitter card data
+				if strings.HasPrefix(name, "twitter:") {
 					metadata[name] = content
 				}
-			}
-			if token.Data == "title" { // Fallback for title
-				tokenizer.Next() // Get to the text token
-				titleToken := tokenizer.Token()
-				if titleToken.Type == html.TextToken {
-					if _, ok := metadata["og:title"]; !ok { // Prefer OG title if available
-						metadata["og:title"] = titleToken.Data
-					}
+			} else if n.Data == "title" && title == "" {
+				if n.FirstChild != nil && n.FirstChild.Type == html.TextNode {
+					title = n.FirstChild.Data
 				}
 			}
 		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			traverseMetadata(c)
+		}
+	}
+	traverseMetadata(doc)
+
+	// Extract text content from body
+	var textBuilder strings.Builder
+	var traverseText func(*html.Node)
+	traverseText = func(n *html.Node) {
+		if n.Type == html.ElementNode {
+			// Skip script, style, and noscript tags
+			if n.Data == "script" || n.Data == "style" || n.Data == "noscript" || n.Data == "iframe" {
+				return
+			}
+		}
+		if n.Type == html.TextNode {
+			text := strings.TrimSpace(n.Data)
+			if text != "" {
+				textBuilder.WriteString(text)
+				textBuilder.WriteString(" ")
+			}
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			traverseText(c)
+		}
+	}
+
+	// Find body node to start text extraction
+	var bodyNode *html.Node
+	var findBody func(*html.Node)
+	findBody = func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "body" {
+			bodyNode = n
+			return
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			findBody(c)
+			if bodyNode != nil {
+				return
+			}
+		}
+	}
+	findBody(doc)
+
+	if bodyNode != nil {
+		traverseText(bodyNode)
 	}
 
 	// Construct the response
 	response := MetadataResponse{
-		URL: targetURL,
+		URL:     targetURL,
+		Content: strings.TrimSpace(textBuilder.String()),
 	}
 
 	// Prioritize Open Graph, then Twitter Card, then generic HTML elements
 	response.Title = metadata["og:title"]
 	if response.Title == "" {
 		response.Title = metadata["twitter:title"]
+	}
+	if response.Title == "" {
+		response.Title = title
 	}
 
 	response.Description = metadata["og:description"]
