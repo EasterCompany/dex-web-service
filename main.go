@@ -90,6 +90,8 @@ func main() {
 	mux.HandleFunc("/service", endpoints.ServiceHandler)
 	// /metadata endpoint for link unfurling and content extraction
 	mux.HandleFunc("/metadata", endpoints.MetadataHandler)
+	// /webview endpoint for headless browser rendering
+	mux.HandleFunc("/webview", endpoints.WebViewHandler)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", port),
