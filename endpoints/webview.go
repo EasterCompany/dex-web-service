@@ -47,18 +47,32 @@ func WebViewHandler(w http.ResponseWriter, r *http.Request) {
 
 	var title, content string
 	var buf []byte
+	var pageHeight float64
 
 	// Run tasks
-	// 1. Navigate
-	// 2. Wait for body (ensures at least basic rendering)
-	// 3. Capture Title
-	// 4. Capture HTML (DOM state after JS)
-	// 5. Capture Screenshot (Visual state)
+	// 1. Emulate Mobile (iPhone X width)
+	// 2. Navigate & Wait
+	// 3. Capture Meta
+	// 4. Measure Height
+	// 5. Resize Viewport to content height (capped at 5000px)
+	// 6. Capture Screenshot
 	err := chromedp.Run(ctx,
+		chromedp.EmulateViewport(375, 812, chromedp.EmulateMobile),
 		chromedp.Navigate(targetURL),
 		chromedp.WaitVisible(`body`, chromedp.ByQuery),
 		chromedp.Title(&title),
 		chromedp.OuterHTML(`html`, &content, chromedp.ByQuery),
+		chromedp.Evaluate(`document.documentElement.scrollHeight`, &pageHeight),
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			h := int64(pageHeight)
+			if h > 5000 {
+				h = 5000
+			}
+			if h < 812 {
+				h = 812
+			}
+			return chromedp.EmulateViewport(375, h, chromedp.EmulateMobile).Do(ctx)
+		}),
 		chromedp.CaptureScreenshot(&buf),
 	)
 
