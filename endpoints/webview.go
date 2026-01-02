@@ -35,8 +35,8 @@ func WebViewHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create context with timeout
-	// 30 seconds should be enough for most pages to load
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	// 90 seconds should be enough for most pages to load even on slow hardware
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
 
 	// Initialize chromedp
