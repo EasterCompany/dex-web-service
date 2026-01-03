@@ -145,7 +145,14 @@ func MetadataHandler(w http.ResponseWriter, r *http.Request) {
 			if n.Data == "a" {
 				for _, attr := range n.Attr {
 					if attr.Key == "href" {
-						currentHref = resolveURL(targetURL, attr.Val)
+						val := strings.TrimSpace(attr.Val)
+						if val == "" || strings.HasPrefix(val, "#") ||
+							strings.HasPrefix(strings.ToLower(val), "javascript:") ||
+							strings.HasPrefix(strings.ToLower(val), "mailto:") ||
+							strings.HasPrefix(strings.ToLower(val), "tel:") {
+							continue
+						}
+						currentHref = resolveURL(targetURL, val)
 						break
 					}
 				}
