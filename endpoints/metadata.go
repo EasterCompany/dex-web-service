@@ -46,7 +46,16 @@ func MetadataHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Fetch the URL content
 	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Get(targetURL)
+	req, err := http.NewRequest("GET", targetURL, nil)
+	if err != nil {
+		log.Printf("Error creating request for URL %s: %v", targetURL, err)
+		http.Error(w, fmt.Sprintf("Failed to create request: %v", err), http.StatusInternalServerError)
+		return
+	}
+	// Use a standard Desktop User-Agent to avoid mobile versions or blocking
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+
+	resp, err := client.Do(req)
 	if err != nil {
 		log.Printf("Error fetching URL %s: %v", targetURL, err)
 		http.Error(w, fmt.Sprintf("Failed to fetch URL: %v", err), http.StatusInternalServerError)
@@ -54,7 +63,7 @@ func MetadataHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted && resp.StatusCode != http.StatusNonAuthoritativeInfo {
 		log.Printf("Received non-OK status for URL %s: %d", targetURL, resp.StatusCode)
 		http.Error(w, fmt.Sprintf("Failed to fetch URL, status code: %d", resp.StatusCode), http.StatusInternalServerError)
 		return
