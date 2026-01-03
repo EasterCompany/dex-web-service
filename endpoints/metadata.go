@@ -115,8 +115,25 @@ func MetadataHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	traverseMetadata(doc)
 
+	// Helper to resolve relative URLs
+	resolveURL := func(base, ref string) string {
+		u, err := url.Parse(ref)
+		if err != nil {
+			return ref
+		}
+		if u.IsAbs() {
+			return ref
+		}
+		baseURL, err := url.Parse(base)
+		if err != nil {
+			return ref
+		}
+		return baseURL.ResolveReference(u).String()
+	}
+
 	// Extract text content from body
 	var textBuilder strings.Builder
+	var currentHref string
 	var traverseText func(*html.Node)
 	traverseText = func(n *html.Node) {
 		if n.Type == html.ElementNode {
@@ -124,16 +141,36 @@ func MetadataHandler(w http.ResponseWriter, r *http.Request) {
 			if n.Data == "script" || n.Data == "style" || n.Data == "noscript" || n.Data == "iframe" {
 				return
 			}
+
+			if n.Data == "a" {
+				for _, attr := range n.Attr {
+					if attr.Key == "href" {
+						currentHref = resolveURL(targetURL, attr.Val)
+						break
+					}
+				}
+			}
 		}
+
 		if n.Type == html.TextNode {
 			text := strings.TrimSpace(n.Data)
 			if text != "" {
-				textBuilder.WriteString(text)
-				textBuilder.WriteString(" ")
+				if currentHref != "" {
+					// Basic deduplication for text nodes within same link
+					textBuilder.WriteString(fmt.Sprintf("[%s](%s) ", text, currentHref))
+				} else {
+					textBuilder.WriteString(text)
+					textBuilder.WriteString(" ")
+				}
 			}
 		}
+
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			traverseText(c)
+		}
+
+		if n.Type == html.ElementNode && n.Data == "a" {
+			currentHref = ""
 		}
 	}
 
