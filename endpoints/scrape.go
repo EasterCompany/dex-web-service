@@ -9,6 +9,7 @@ import (
 
 	"github.com/EasterCompany/dex-web-service/utils"
 	"golang.org/x/net/html"
+	"golang.org/x/net/html/charset"
 )
 
 // ScrapeResponse holds the high-fidelity scraped content
@@ -48,8 +49,15 @@ func ScrapeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Detect and convert charset to UTF-8
+	utf8Reader, err := charset.NewReader(resp.Body, resp.Header.Get("Content-Type"))
+	if err != nil {
+		log.Printf("Charset detection failed: %v", err)
+		utf8Reader = resp.Body // Fallback
+	}
+
 	// Parse HTML
-	doc, err := html.Parse(resp.Body)
+	doc, err := html.Parse(utf8Reader)
 	if err != nil {
 		http.Error(w, "Failed to parse HTML", http.StatusInternalServerError)
 		return
