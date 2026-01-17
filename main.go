@@ -92,6 +92,10 @@ func main() {
 	mux.HandleFunc("/metadata", endpoints.MetadataHandler)
 	// /webview endpoint for headless browser rendering
 	mux.HandleFunc("/webview", endpoints.WebViewHandler)
+	// /search endpoint for DuckDuckGo HTML search
+	mux.HandleFunc("/search", endpoints.SearchHandler)
+	// /scrape endpoint for full content extraction
+	mux.HandleFunc("/scrape", endpoints.ScrapeHandler)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", port),
