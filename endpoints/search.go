@@ -140,10 +140,3 @@ func getText(n *html.Node) string {
 	traverse(n)
 	return strings.TrimSpace(sb.String())
 }
-
-// ScrapeHandler performs a high-fidelity scrape of a URL
-func ScrapeHandler(w http.ResponseWriter, r *http.Request) {
-	// For now, we can reuse the MetadataHandler logic but maybe with different parameters if needed
-	// Or we just proxy it to MetadataHandler for now as it already does text extraction.
-	MetadataHandler(w, r)
-}
