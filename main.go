@@ -96,6 +96,8 @@ func main() {
 	mux.HandleFunc("/search", endpoints.SearchHandler)
 	// /scrape endpoint for full content extraction
 	mux.HandleFunc("/scrape", endpoints.ScrapeHandler)
+	// /open endpoint for protocol redirects (ssh, mosh, etc.)
+	mux.HandleFunc("/open", endpoints.OpenHandler)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", port),
