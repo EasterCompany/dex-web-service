@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/chromedp/chromedp"
@@ -14,11 +15,12 @@ import (
 
 // WebViewResponse represents the data extracted from a headless browser session.
 type WebViewResponse struct {
-	URL        string `json:"url"`
-	Title      string `json:"title,omitempty"`
-	Content    string `json:"content,omitempty"`    // Rendered HTML content
-	Screenshot string `json:"screenshot,omitempty"` // Base64 encoded screenshot
-	Error      string `json:"error,omitempty"`
+	URL            string `json:"url"`
+	Title          string `json:"title,omitempty"`
+	Content        string `json:"content,omitempty"`         // Rendered HTML content
+	Screenshot     string `json:"screenshot,omitempty"`      // Base64 encoded screenshot
+	ScreenshotPath string `json:"screenshot_path,omitempty"` // Local path to screenshot
+	Error          string `json:"error,omitempty"`
 }
 
 // WebViewHandler handles requests to view a page in a headless browser.
@@ -33,6 +35,8 @@ func WebViewHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "URL parameter is required", http.StatusBadRequest)
 		return
 	}
+
+	outputPath := r.URL.Query().Get("output_path")
 
 	// Create context with timeout
 	// 90 seconds should be enough for most pages to load even on slow hardware
@@ -86,7 +90,18 @@ func WebViewHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		response.Title = title
 		response.Content = content
-		response.Screenshot = base64.StdEncoding.EncodeToString(buf)
+
+		if outputPath != "" {
+			if err := os.WriteFile(outputPath, buf, 0644); err != nil {
+				log.Printf("Failed to write screenshot to %s: %v", outputPath, err)
+				// Fallback to base64
+				response.Screenshot = base64.StdEncoding.EncodeToString(buf)
+			} else {
+				response.ScreenshotPath = outputPath
+			}
+		} else {
+			response.Screenshot = base64.StdEncoding.EncodeToString(buf)
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
