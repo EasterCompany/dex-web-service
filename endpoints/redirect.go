@@ -117,15 +117,48 @@ func OpenHandler(w http.ResponseWriter, r *http.Request) {
                 command = 'mosh ' + parts[0];
             }
 
-            navigator.clipboard.writeText(command).then(() => {
-                const msg = document.getElementById('status-msg');
-                msg.textContent = "✅ Command copied to clipboard!";
-                msg.style.color = "#03dac6";
-                setTimeout(() => {
-                    msg.textContent = "If the app doesn't open automatically, tap a button above.";
-                    msg.style.color = "#888";
-                }, 3000);
-            });
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(command).then(showSuccess, showError);
+            } else {
+                // Fallback for non-secure contexts (HTTP)
+                try {
+                    const textArea = document.createElement("textarea");
+                    textArea.value = command;
+                    
+                    // Ensure it's not visible but part of DOM
+                    textArea.style.position = "fixed";
+                    textArea.style.left = "-9999px";
+                    textArea.style.top = "0";
+                    document.body.appendChild(textArea);
+                    
+                    textArea.focus();
+                    textArea.select();
+                    
+                    const successful = document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    
+                    if (successful) showSuccess();
+                    else showError();
+                } catch (err) {
+                    showError();
+                }
+            }
+        }
+
+        function showSuccess() {
+            const msg = document.getElementById('status-msg');
+            msg.textContent = "✅ Command copied to clipboard!";
+            msg.style.color = "#03dac6";
+            setTimeout(() => {
+                msg.textContent = "If the app doesn't open automatically, tap a button above.";
+                msg.style.color = "#888";
+            }, 3000);
+        }
+
+        function showError() {
+            const msg = document.getElementById('status-msg');
+            msg.textContent = "❌ Failed to copy. Please copy manually.";
+            msg.style.color = "#cf6679";
         }
 
         // Attempt automatic redirect after a short delay
