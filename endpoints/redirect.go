@@ -95,13 +95,42 @@ func OpenHandler(w http.ResponseWriter, r *http.Request) {
 </head>
 <body>
     <a id="launch-btn" href="%s" class="btn">Open Terminal</a>
-    <p>If the app doesn't open automatically, tap the button.</p>
-    <div class="url">%s</div>
+    <button onclick="copyCommand()" class="btn" style="background-color: #bb86fc; margin-top: 10px;">Copy Command</button>
+    <p id="status-msg">If the app doesn't open automatically, tap a button above.</p>
+    <div class="url" id="command-text">%s</div>
 
     <script>
+        const target = "%s";
+        
+        function copyCommand() {
+            // Convert URI back to a shell command for copying
+            let command = target;
+            if (target.startsWith('ssh://')) {
+                // ssh://user@host:port -> ssh user@host -p port
+                const parts = target.replace('ssh://', '').split(':');
+                const userHost = parts[0];
+                const port = parts[1] || '22';
+                command = 'ssh ' + userHost + ' -p ' + port;
+            } else if (target.startsWith('mosh://')) {
+                // mosh://user@host:port -> mosh user@host
+                const parts = target.replace('mosh://', '').split(':');
+                command = 'mosh ' + parts[0];
+            }
+
+            navigator.clipboard.writeText(command).then(() => {
+                const msg = document.getElementById('status-msg');
+                msg.textContent = "✅ Command copied to clipboard!";
+                msg.style.color = "#03dac6";
+                setTimeout(() => {
+                    msg.textContent = "If the app doesn't open automatically, tap a button above.";
+                    msg.style.color = "#888";
+                }, 3000);
+            });
+        }
+
         // Attempt automatic redirect after a short delay
         setTimeout(() => {
-            window.location.href = "%s";
+            window.location.href = target;
         }, 500);
     </script>
 </body>
