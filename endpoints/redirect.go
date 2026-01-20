@@ -36,7 +36,77 @@ func OpenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 307 Temporary Redirect preserves the method and body, though irrelevant for GET
-	// It tells the browser "Go here now", which triggers the OS app handler.
-	http.Redirect(w, r, target, http.StatusTemporaryRedirect)
+	// iOS Safari often blocks 307 redirects to custom schemes from within in-app browsers (like Discord).
+	// We serve a lightweight landing page with a manual button to ensure the action is "user-initiated".
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+
+	html := fmt.Sprintf(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Opening Terminal...</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        .btn {
+            background-color: #03dac6;
+            color: #000000;
+            border: none;
+            padding: 16px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: transform 0.1s;
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+        p {
+            margin-top: 20px;
+            color: #888;
+            font-size: 14px;
+        }
+        .url {
+            color: #555;
+            font-family: monospace;
+            font-size: 12px;
+            max-width: 90vw;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <a id="launch-btn" href="%s" class="btn">Open Terminal</a>
+    <p>If the app doesn't open automatically, tap the button.</p>
+    <div class="url">%s</div>
+
+    <script>
+        // Attempt automatic redirect after a short delay
+        setTimeout(() => {
+            window.location.href = "%s";
+        }, 500);
+    </script>
+</body>
+</html>
+`, target, target, target)
+
+	_, _ = w.Write([]byte(html))
 }
