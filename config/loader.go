@@ -64,3 +64,25 @@ func LoadSystem() (*SystemConfig, error) {
 	err := loadAndUnmarshal("system.json", &cfg)
 	return &cfg, err
 }
+
+// ResolveServiceHost finds a service by its ID and returns its "domain:port" or "domain" if no port.
+func ResolveServiceHost(id string) (string, error) {
+	cfg, err := LoadServiceMap()
+	if err != nil {
+		return "", err
+	}
+
+	for _, serviceList := range cfg.Services {
+		for _, service := range serviceList {
+			if service.ID == id {
+				host := service.Domain
+				if service.Port != "" {
+					host = fmt.Sprintf("%s:%s", host, service.Port)
+				}
+				return host, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("service %s not found in service-map.json", id)
+}

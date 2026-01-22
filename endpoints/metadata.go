@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/EasterCompany/dex-web-service/utils"
 	"golang.org/x/net/html"
 )
 
@@ -19,6 +20,7 @@ type MetadataResponse struct {
 	Description string `json:"description,omitempty"`
 	ImageURL    string `json:"image_url,omitempty"`
 	Content     string `json:"content,omitempty"`
+	Summary     string `json:"summary,omitempty"`
 	ContentType string `json:"content_type,omitempty"` // e.g., "image/gif", "text/html"
 	Provider    string `json:"provider,omitempty"`     // e.g., "Tenor", "Giphy"
 	Error       string `json:"error,omitempty"`
@@ -36,6 +38,8 @@ func MetadataHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "URL parameter is required", http.StatusBadRequest)
 		return
 	}
+
+	shouldSummarize := r.URL.Query().Get("summary") == "true"
 
 	parsedURL, err := url.Parse(targetURL)
 	if err != nil {
@@ -202,10 +206,17 @@ func MetadataHandler(w http.ResponseWriter, r *http.Request) {
 		traverseText(bodyNode)
 	}
 
+	content := strings.TrimSpace(textBuilder.String())
+	var summary string
+	if shouldSummarize && content != "" {
+		summary, _ = utils.GenerateSummary(content)
+	}
+
 	// Construct the response
 	response := MetadataResponse{
 		URL:     targetURL,
-		Content: strings.TrimSpace(textBuilder.String()),
+		Content: content,
+		Summary: summary,
 	}
 
 	// Prioritize Open Graph, then Twitter Card, then generic HTML elements
