@@ -10,6 +10,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/EasterCompany/dex-web-service/utils"
 	"github.com/chromedp/chromedp"
 )
 
@@ -18,6 +19,7 @@ type WebViewResponse struct {
 	URL            string `json:"url"`
 	Title          string `json:"title,omitempty"`
 	Content        string `json:"content,omitempty"`         // Rendered HTML content
+	Summary        string `json:"summary,omitempty"`         // Generated summary
 	Screenshot     string `json:"screenshot,omitempty"`      // Base64 encoded screenshot
 	ScreenshotPath string `json:"screenshot_path,omitempty"` // Local path to screenshot
 	Error          string `json:"error,omitempty"`
@@ -37,6 +39,7 @@ func WebViewHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	outputPath := r.URL.Query().Get("output_path")
+	shouldSummarize := r.URL.Query().Get("summary") == "true"
 
 	// Create context with timeout
 	// 90 seconds should be enough for most pages to load even on slow hardware
@@ -90,6 +93,10 @@ func WebViewHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		response.Title = title
 		response.Content = content
+
+		if shouldSummarize && content != "" {
+			response.Summary, _ = utils.GenerateSummary(content)
+		}
 
 		if outputPath != "" {
 			if err := os.WriteFile(outputPath, buf, 0644); err != nil {
