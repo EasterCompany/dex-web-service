@@ -1,6 +1,7 @@
 package endpoints
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -189,5 +190,9 @@ func MetadataHandler(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Printf("Error encoding metadata response: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
+
+	// Update global Web View state
+	go utils.UpdateWebViewState(context.Background(), utils.GetRedisClient(), targetURL, "metadata", response)
 }

@@ -30,6 +30,11 @@ func InitRedis(addr string, password string, db int) {
 	}
 }
 
+// GetRedisClient returns the global Redis client
+func GetRedisClient() *redis.Client {
+	return RDB
+}
+
 // GetCachedPage returns the raw HTML of a page if it exists in cache
 func GetCachedPage(ctx context.Context, targetURL string) (string, error) {
 	if RDB == nil {

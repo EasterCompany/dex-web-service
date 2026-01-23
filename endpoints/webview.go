@@ -115,4 +115,7 @@ func WebViewHandler(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Printf("Error encoding webview response: %v", err)
 	}
+
+	// Update global Web View state
+	go utils.UpdateWebViewState(context.Background(), utils.GetRedisClient(), targetURL, "visual", response)
 }

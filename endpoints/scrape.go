@@ -1,6 +1,7 @@
 package endpoints
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -99,4 +100,7 @@ func ScrapeHandler(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Printf("Error encoding scrape response: %v", err)
 	}
+
+	// Update global Web View state
+	go utils.UpdateWebViewState(context.Background(), utils.GetRedisClient(), targetURL, "scrape", response)
 }
