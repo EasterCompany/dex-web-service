@@ -3,13 +3,16 @@ package endpoints
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
+	"github.com/EasterCompany/dex-web-service/utils"
 	"golang.org/x/net/html"
+	"golang.org/x/net/html/charset"
 )
 
 // MetadataResponse represents the structured data extracted from a URL.
@@ -45,33 +48,57 @@ func MetadataHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch the URL content
-	client := &http.Client{Timeout: 10 * time.Second}
-	req, err := http.NewRequest("GET", targetURL, nil)
+	ctx := r.Context()
+	var rawHTML string
+
+	// Try cache first
+	rawHTML, err = utils.GetCachedPage(ctx, targetURL)
 	if err != nil {
-		log.Printf("Error creating request for URL %s: %v", targetURL, err)
-		http.Error(w, fmt.Sprintf("Failed to create request: %v", err), http.StatusInternalServerError)
-		return
-	}
-	// Use a standard Desktop User-Agent to avoid mobile versions or blocking
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+		// Fetch the URL content
+		client := &http.Client{Timeout: 10 * time.Second}
+		req, err := http.NewRequest("GET", targetURL, nil)
+		if err != nil {
+			log.Printf("Error creating request for URL %s: %v", targetURL, err)
+			http.Error(w, fmt.Sprintf("Failed to create request: %v", err), http.StatusInternalServerError)
+			return
+		}
+		// Use a standard Desktop User-Agent to avoid mobile versions or blocking
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Printf("Error fetching URL %s: %v", targetURL, err)
-		http.Error(w, fmt.Sprintf("Failed to fetch URL: %v", err), http.StatusInternalServerError)
-		return
-	}
-	defer func() { _ = resp.Body.Close() }()
+		resp, err := client.Do(req)
+		if err != nil {
+			log.Printf("Error fetching URL %s: %v", targetURL, err)
+			http.Error(w, fmt.Sprintf("Failed to fetch URL: %v", err), http.StatusInternalServerError)
+			return
+		}
+		defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted && resp.StatusCode != http.StatusNonAuthoritativeInfo {
-		log.Printf("Received non-OK status for URL %s: %d", targetURL, resp.StatusCode)
-		http.Error(w, fmt.Sprintf("Failed to fetch URL, status code: %d", resp.StatusCode), http.StatusInternalServerError)
-		return
+		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted && resp.StatusCode != http.StatusNonAuthoritativeInfo {
+			log.Printf("Received non-OK status for URL %s: %d", targetURL, resp.StatusCode)
+			http.Error(w, fmt.Sprintf("Failed to fetch URL, status code: %d", resp.StatusCode), http.StatusInternalServerError)
+			return
+		}
+
+		// Detect and convert charset to UTF-8
+		utf8Reader, err := charset.NewReader(resp.Body, resp.Header.Get("Content-Type"))
+		if err != nil {
+			log.Printf("Charset detection failed: %v", err)
+			utf8Reader = resp.Body // Fallback
+		}
+
+		bodyBytes, err := io.ReadAll(utf8Reader)
+		if err != nil {
+			http.Error(w, "Failed to read response body", http.StatusInternalServerError)
+			return
+		}
+		rawHTML = string(bodyBytes)
+
+		// Store in cache
+		_ = utils.SetCachedPage(ctx, targetURL, rawHTML)
 	}
 
-	// Parse HTML
-	doc, err := html.Parse(resp.Body)
+	// Parse HTML from string
+	doc, err := html.Parse(strings.NewReader(rawHTML))
 	if err != nil {
 		log.Printf("Error parsing HTML for URL %s: %v", targetURL, err)
 		http.Error(w, fmt.Sprintf("Failed to parse HTML: %v", err), http.StatusInternalServerError)

@@ -3,8 +3,10 @@ package endpoints
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/EasterCompany/dex-web-service/utils"
@@ -27,37 +29,55 @@ func ScrapeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch URL
-	client := &http.Client{Timeout: 15 * time.Second}
-	req, err := http.NewRequest("GET", targetURL, nil)
+	ctx := r.Context()
+	var rawHTML string
+	var err error
+
+	// Try cache first
+	rawHTML, err = utils.GetCachedPage(ctx, targetURL)
 	if err != nil {
-		http.Error(w, "Failed to create request", http.StatusInternalServerError)
-		return
-	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+		// Fetch URL if not in cache
+		client := &http.Client{Timeout: 15 * time.Second}
+		req, err := http.NewRequest("GET", targetURL, nil)
+		if err != nil {
+			http.Error(w, "Failed to create request", http.StatusInternalServerError)
+			return
+		}
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Printf("Scrape fetch error: %v", err)
-		http.Error(w, fmt.Sprintf("Failed to fetch URL: %v", err), http.StatusServiceUnavailable)
-		return
-	}
-	defer func() { _ = resp.Body.Close() }()
+		resp, err := client.Do(req)
+		if err != nil {
+			log.Printf("Scrape fetch error: %v", err)
+			http.Error(w, fmt.Sprintf("Failed to fetch URL: %v", err), http.StatusServiceUnavailable)
+			return
+		}
+		defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		http.Error(w, fmt.Sprintf("URL returned status: %d", resp.StatusCode), http.StatusServiceUnavailable)
-		return
+		if resp.StatusCode != http.StatusOK {
+			http.Error(w, fmt.Sprintf("URL returned status: %d", resp.StatusCode), http.StatusServiceUnavailable)
+			return
+		}
+
+		// Detect and convert charset to UTF-8
+		utf8Reader, err := charset.NewReader(resp.Body, resp.Header.Get("Content-Type"))
+		if err != nil {
+			log.Printf("Charset detection failed: %v", err)
+			utf8Reader = resp.Body // Fallback
+		}
+
+		bodyBytes, err := io.ReadAll(utf8Reader)
+		if err != nil {
+			http.Error(w, "Failed to read response body", http.StatusInternalServerError)
+			return
+		}
+		rawHTML = string(bodyBytes)
+
+		// Store in cache
+		_ = utils.SetCachedPage(ctx, targetURL, rawHTML)
 	}
 
-	// Detect and convert charset to UTF-8
-	utf8Reader, err := charset.NewReader(resp.Body, resp.Header.Get("Content-Type"))
-	if err != nil {
-		log.Printf("Charset detection failed: %v", err)
-		utf8Reader = resp.Body // Fallback
-	}
-
-	// Parse HTML
-	doc, err := html.Parse(utf8Reader)
+	// Parse HTML from string
+	doc, err := html.Parse(strings.NewReader(rawHTML))
 	if err != nil {
 		http.Error(w, "Failed to parse HTML", http.StatusInternalServerError)
 		return

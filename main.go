@@ -72,6 +72,27 @@ func main() {
 		log.Fatalf("FATAL: Service '%s' not found in service-map.json under 'be' services. Shutting down.", ServiceName)
 	}
 
+	// Find local-cache-0 for caching
+	var cacheConfig *config.ServiceEntry
+	for _, service := range serviceMap.Services["os"] {
+		if service.ID == "local-cache-0" {
+			cacheConfig = &service
+			break
+		}
+	}
+
+	if cacheConfig != nil {
+		pass := ""
+		if cacheConfig.Credentials != nil {
+			if creds, ok := cacheConfig.Credentials.(map[string]interface{}); ok {
+				if p, ok := creds["password"].(string); ok {
+					pass = p
+				}
+			}
+		}
+		utils.InitRedis(fmt.Sprintf("%s:%s", cacheConfig.Domain, cacheConfig.Port), pass, 0)
+	}
+
 	// Get port from config, convert to integer.
 	port, err := strconv.Atoi(selfConfig.Port)
 	if err != nil {
