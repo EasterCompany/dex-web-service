@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/EasterCompany/dex-web-service/utils"
 	"golang.org/x/net/html"
 )
 
@@ -38,8 +37,6 @@ func MetadataHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "URL parameter is required", http.StatusBadRequest)
 		return
 	}
-
-	shouldSummarize := r.URL.Query().Get("summary") == "true"
 
 	parsedURL, err := url.Parse(targetURL)
 	if err != nil {
@@ -119,107 +116,10 @@ func MetadataHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	traverseMetadata(doc)
 
-	// Helper to resolve relative URLs
-	resolveURL := func(base, ref string) string {
-		u, err := url.Parse(ref)
-		if err != nil {
-			return ref
-		}
-		if u.IsAbs() {
-			return ref
-		}
-		baseURL, err := url.Parse(base)
-		if err != nil {
-			return ref
-		}
-		return baseURL.ResolveReference(u).String()
-	}
-
-	// Extract text content from body
-	var textBuilder strings.Builder
-	var currentHref string
-	var traverseText func(*html.Node)
-	traverseText = func(n *html.Node) {
-		if n.Type == html.ElementNode {
-			// Skip script, style, and noscript tags
-			if n.Data == "script" || n.Data == "style" || n.Data == "noscript" || n.Data == "iframe" {
-				return
-			}
-
-			if n.Data == "a" {
-				for _, attr := range n.Attr {
-					if attr.Key == "href" {
-						val := strings.TrimSpace(attr.Val)
-						if val == "" || strings.HasPrefix(val, "#") ||
-							strings.HasPrefix(strings.ToLower(val), "javascript:") ||
-							strings.HasPrefix(strings.ToLower(val), "mailto:") ||
-							strings.HasPrefix(strings.ToLower(val), "tel:") {
-							continue
-						}
-						currentHref = resolveURL(targetURL, val)
-						break
-					}
-				}
-			}
-		}
-
-		if n.Type == html.TextNode {
-			text := strings.TrimSpace(n.Data)
-			if text != "" {
-				if currentHref != "" {
-					// Basic deduplication for text nodes within same link
-					textBuilder.WriteString(fmt.Sprintf("[%s](%s) ", text, currentHref))
-				} else {
-					textBuilder.WriteString(text)
-					textBuilder.WriteString(" ")
-				}
-			}
-		}
-
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			traverseText(c)
-		}
-
-		if n.Type == html.ElementNode && n.Data == "a" {
-			currentHref = ""
-		}
-	}
-
-	// Find body node to start text extraction
-	var bodyNode *html.Node
-	var findBody func(*html.Node)
-	findBody = func(n *html.Node) {
-		if n.Type == html.ElementNode && n.Data == "body" {
-			bodyNode = n
-			return
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			findBody(c)
-			if bodyNode != nil {
-				return
-			}
-		}
-	}
-	findBody(doc)
-
-	if bodyNode != nil {
-		traverseText(bodyNode)
-	}
-
-	content := strings.TrimSpace(textBuilder.String())
-	var summary string
-	if shouldSummarize && content != "" {
-		summary, _ = utils.GenerateSummary(content)
-	}
-
-	// Construct the response
-	response := MetadataResponse{
-		URL:     targetURL,
-		Content: content,
-		Summary: summary,
-	}
-
 	// Prioritize Open Graph, then Twitter Card, then generic HTML elements
+	response := MetadataResponse{
+		URL: targetURL,
+	}
 	response.Title = metadata["og:title"]
 	if response.Title == "" {
 		response.Title = metadata["twitter:title"]
