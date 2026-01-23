@@ -81,7 +81,14 @@ func cleanDOM(n *html.Node) {
 				strings.Contains(combined, "ad-") ||
 				strings.Contains(combined, "widget") ||
 				strings.Contains(combined, "promo") ||
-				strings.Contains(combined, "newsletter") {
+				strings.Contains(combined, "newsletter") ||
+				strings.Contains(combined, "trending") ||
+				strings.Contains(combined, "related") ||
+				strings.Contains(combined, "popular") ||
+				strings.Contains(combined, "social") ||
+				strings.Contains(combined, "share") ||
+				strings.Contains(combined, "more-from") ||
+				strings.Contains(combined, "more_from") {
 				toRemove = append(toRemove, n)
 				return
 			}
@@ -102,13 +109,38 @@ func cleanDOM(n *html.Node) {
 	}
 }
 
+// getLinkDensity calculates the ratio of text inside links vs total text
+func getLinkDensity(n *html.Node) float64 {
+	totalText := getTextContent(n)
+	if len(totalText) == 0 {
+		return 0
+	}
+
+	var linkTextBuilder strings.Builder
+	var walk func(*html.Node)
+	walk = func(node *html.Node) {
+		if node.Type == html.ElementNode && node.Data == "a" {
+			linkTextBuilder.WriteString(getTextContent(node))
+			return // Don't double count children of links
+		}
+		for c := node.FirstChild; c != nil; c = c.NextSibling {
+			walk(c)
+		}
+	}
+	walk(n)
+
+	linkText := linkTextBuilder.String()
+	return float64(len(linkText)) / float64(len(totalText))
+}
+
 // scoreNode traverses and assigns points to potential containers
 func scoreNode(n *html.Node, candidates map[*html.Node]float64) {
 	if n.Type == html.ElementNode {
 		// Only score block-level containers that contain text
 		if n.Data == "p" || n.Data == "article" || n.Data == "section" || n.Data == "div" || n.Data == "main" {
 			text := getTextContent(n)
-			wordCount := len(strings.Fields(text))
+			words := strings.Fields(text)
+			wordCount := len(words)
 
 			if wordCount < 10 {
 				return // Too short to be main content
@@ -142,6 +174,12 @@ func scoreNode(n *html.Node, candidates map[*html.Node]float64) {
 			}
 			if strings.Contains(hints, "nav") || strings.Contains(hints, "menu") {
 				score -= 20
+			}
+
+			// Link Density Penalty: If more than 50% of the text is links, it's likely a list/navigation
+			density := getLinkDensity(n)
+			if density > 0.5 {
+				score *= 0.1
 			}
 
 			// Assign score to this node AND bubble up some score to parent
@@ -197,12 +235,16 @@ func nodeToMarkdown(n *html.Node, baseURL string) string {
 							}
 						}
 					}
-					sb.WriteString(" [") // Start link
-					for c := node.FirstChild; c != nil; c = c.NextSibling {
-						walk(c) // Recurse for link text
+
+					linkText := strings.TrimSpace(getTextContent(node))
+					// RULE: Only format as a Markdown link if the text is short (likely a title or button)
+					// If it's a massive block of text, just output the text to avoid syntactic mess.
+					if len(linkText) > 0 && len(linkText) < 200 {
+						sb.WriteString(fmt.Sprintf(" [%s](%s) ", linkText, href))
+					} else {
+						sb.WriteString(linkText + " ")
 					}
-					sb.WriteString(fmt.Sprintf("](%s) ", href)) // End link
-					return                                      // Don't traverse children again
+					return // Handled link text, don't traverse children
 				}
 			}
 		}
@@ -261,9 +303,13 @@ func getTextContent(n *html.Node) string {
 }
 
 func cleanMarkdown(raw string) string {
+	// Remove empty headers
+	reHeaders := regexp.MustCompile(`(?m)^#+\s*$`)
+	clean := reHeaders.ReplaceAllString(raw, "")
+
 	// Collapse multiple newlines
 	re := regexp.MustCompile(`\n{3,}`)
-	clean := re.ReplaceAllString(raw, "\n\n")
+	clean = re.ReplaceAllString(clean, "\n\n")
 
 	// Collapse multiple spaces
 	reSpaces := regexp.MustCompile(`[ 	]+`)
