@@ -307,13 +307,20 @@ func cleanMarkdown(raw string) string {
 	reHeaders := regexp.MustCompile(`(?m)^#+\s*$`)
 	clean := reHeaders.ReplaceAllString(raw, "")
 
-	// Collapse multiple newlines
-	re := regexp.MustCompile(`\n{3,}`)
-	clean = re.ReplaceAllString(clean, "\n\n")
+	// Split into lines to trim each one
+	lines := strings.Split(clean, "\n")
+	var trimmedLines []string
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		trimmedLines = append(trimmedLines, trimmed)
+	}
+	clean = strings.Join(trimmedLines, "\n")
 
-	// Collapse multiple spaces
-	reSpaces := regexp.MustCompile(`[ 	]+`)
-	clean = reSpaces.ReplaceAllString(clean, " ")
+	// Collapse multiple newlines (3 or more down to 2)
+	// and then any 2 or more into exactly 2 for consistent spacing
+	reMultiNewline := regexp.MustCompile(`\n{2,}`)
+	clean = reMultiNewline.ReplaceAllString(clean, "\n\n")
 
+	// Final trim for leading/trailing document whitespace
 	return strings.TrimSpace(clean)
 }
