@@ -85,11 +85,7 @@ func main() {
 	if cacheConfig != nil {
 		pass := ""
 		if cacheConfig.Credentials != nil {
-			if creds, ok := cacheConfig.Credentials.(map[string]interface{}); ok {
-				if p, ok := creds["password"].(string); ok {
-					pass = p
-				}
-			}
+			pass = cacheConfig.Credentials.Password
 		}
 		utils.InitRedis(fmt.Sprintf("%s:%s", cacheConfig.Domain, cacheConfig.Port), pass, 0)
 	}
