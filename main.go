@@ -20,22 +20,23 @@ import (
 const ServiceName = "dex-web-service"
 
 var (
-	version   string
-	branch    string
-	commit    string
-	buildDate string
-	buildYear string
-	buildHash string
-	arch      string
+	version   = "0.0.0"
+	branch    = "unknown"
+	commit    = "unknown"
+	buildDate = "unknown"
+	buildYear = "unknown"
+	buildHash = "unknown"
+	arch      = "unknown"
 )
 
 func main() {
+	utils.SetVersion(version, branch, commit, buildDate, buildYear, buildHash, arch)
+
 	// Handle version/help commands first (before flag parsing)
 	if len(os.Args) > 1 {
 		arg := os.Args[1]
 		switch arg {
 		case "version", "--version", "-v":
-			utils.SetVersion(version, branch, commit, buildDate, buildYear, buildHash, arch)
 			fmt.Println(utils.GetVersion().Str)
 			os.Exit(0)
 		case "help", "--help", "-h":

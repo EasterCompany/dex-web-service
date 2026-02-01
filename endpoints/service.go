@@ -22,7 +22,7 @@ func ServiceHandler(w http.ResponseWriter, r *http.Request) {
 	report := utils.ServiceReport{
 		Version: utils.GetVersion(),
 		Health:  utils.GetHealth(),
-		Metrics: utils.GetMetrics(),
+		Metrics: utils.GetMetrics().ToMap(),
 	}
 
 	w.Header().Set("Content-Type", "application/json")

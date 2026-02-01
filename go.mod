@@ -1,12 +1,15 @@
 module github.com/EasterCompany/dex-web-service
 
-go 1.25.5
+go 1.25.6
 
 require (
+	github.com/EasterCompany/dex-go-utils v0.0.0
 	github.com/chromedp/chromedp v0.14.2
-	github.com/redis/go-redis/v9 v9.17.2
+	github.com/redis/go-redis/v9 v9.17.3
 	golang.org/x/net v0.48.0
 )
+
+replace github.com/EasterCompany/dex-go-utils => ../dex-go-utils
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
