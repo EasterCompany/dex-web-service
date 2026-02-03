@@ -4,9 +4,8 @@ import (
 	sharedConfig "github.com/EasterCompany/dex-go-utils/config"
 )
 
-// Aliases to shared types in dex-go-utils for backward compatibility
+// Aliases to shared types in dex-go-utils
 type ServiceMapConfig = sharedConfig.ServiceMapConfig
-type ServiceType = sharedConfig.ServiceType
 type ServiceEntry = sharedConfig.ServiceEntry
 type OptionsConfig = sharedConfig.OptionsConfig
 type DiscordOptions = sharedConfig.DiscordOptions
