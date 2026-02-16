@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/EasterCompany/dex-go-utils/network"
 	"github.com/EasterCompany/dex-web-service/config"
 	"github.com/EasterCompany/dex-web-service/endpoints"
 	"github.com/EasterCompany/dex-web-service/utils"
@@ -90,10 +91,14 @@ func main() {
 		utils.InitRedis(fmt.Sprintf("%s:%s", cacheConfig.Domain, cacheConfig.Port), pass, 0)
 	}
 
-	// Get port from config, convert to integer.
-	port, err := strconv.Atoi(selfConfig.Port)
+	// Resolve Port (Environment Variable overrides config)
+	portStr := os.Getenv("PORT")
+	if portStr == "" {
+		portStr = selfConfig.Port
+	}
+	port, err := strconv.Atoi(portStr)
 	if err != nil {
-		log.Fatalf("FATAL: Invalid port '%s' for service '%s' in service-map.json: %v", selfConfig.Port, ServiceName, err)
+		log.Fatalf("FATAL: Invalid port '%s': %v", portStr, err)
 	}
 
 	// Create a context for graceful shutdown
@@ -117,8 +122,12 @@ func main() {
 	// /open endpoint for protocol redirects (ssh, mosh, etc.)
 	mux.HandleFunc("/open", endpoints.OpenHandler)
 
+	// Determine Binding Address
+	bindAddr := network.GetBestBindingAddress()
+	addr := fmt.Sprintf("%s:%d", bindAddr, port)
+
 	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%d", port),
+		Addr:         addr,
 		Handler:      mux, // No CORS middleware needed initially, can add later
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
@@ -127,7 +136,7 @@ func main() {
 
 	// Start HTTP server in a goroutine
 	go func() {
-		fmt.Printf("Starting %s on :%d\n", ServiceName, port)
+		fmt.Printf("Starting %s on %s\n", ServiceName, addr)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("HTTP server crashed: %v", err)
 		}
