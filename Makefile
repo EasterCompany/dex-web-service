@@ -9,7 +9,7 @@ GOFMT=$(GOCMD) fmt
 GOLINT=golangci-lint
 
 # Paths
-BIN_DIR := ~/Dexter/bin
+BIN_DIR := ~/.local/bin
 SERVICE_NAME := dex-web-service
 
 # Build information (injected by dex-cli build system)
