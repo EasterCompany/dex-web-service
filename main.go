@@ -62,27 +62,20 @@ func main() {
 		log.Fatalf("FATAL: Could not load service-map.json: %v", err)
 	}
 
-	var selfConfig *config.ServiceEntry
-	for _, service := range serviceMap.Services["be"] { // be for Backend Services
-		if service.ID == ServiceName {
-			selfConfig = &service
-			break
-		}
+	selfConfig, err := serviceMap.ResolveService(ServiceName)
+	if err != nil {
+		log.Fatalf("FATAL: %v", err)
 	}
 
-	if selfConfig == nil {
-		log.Fatalf("FATAL: Service '%s' not found in service-map.json under 'be' services. Shutting down.", ServiceName)
+	// Ensure only one instance is running
+	release, err := utils.AcquireSingleInstanceLock(ServiceName)
+	if err != nil {
+		log.Fatalf("FATAL: %v", err)
 	}
+	defer release()
 
 	// Find local-cache-0 for caching
-	var cacheConfig *config.ServiceEntry
-	for _, service := range serviceMap.Services["os"] {
-		if service.ID == "local-cache-0" {
-			cacheConfig = &service
-			break
-		}
-	}
-
+	cacheConfig, _ := serviceMap.ResolveService("local-cache-0")
 	if cacheConfig != nil {
 		pass := ""
 		if cacheConfig.Credentials != nil {
