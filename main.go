@@ -32,14 +32,14 @@ var (
 )
 
 func main() {
-	utils.SetVersion(version, branch, commit, buildDate, buildYear, buildHash, arch)
+	sharedUtils.SetVersion(version, branch, commit, buildDate, buildYear, buildHash, arch)
 
 	// Handle version/help commands first (before flag parsing)
 	if len(os.Args) > 1 {
 		arg := os.Args[1]
 		switch arg {
 		case "version", "--version", "-v":
-			fmt.Println(utils.GetVersion().Str)
+			fmt.Println(sharedUtils.GetVersion().Str)
 			os.Exit(0)
 		case "help", "--help", "-h":
 			fmt.Println("Dexter Web Service")
@@ -55,7 +55,7 @@ func main() {
 	flag.Parse()
 
 	// Set the version for the service.
-	utils.SetVersion(version, branch, commit, buildDate, buildYear, buildHash, arch)
+	sharedUtils.SetVersion(version, branch, commit, buildDate, buildYear, buildHash, arch)
 
 	// Load the service map and find our own configuration.
 	serviceMap, err := config.LoadServiceMap()
@@ -82,7 +82,7 @@ func main() {
 		if cacheConfig.Credentials != nil {
 			pass = cacheConfig.Credentials.Password
 		}
-		utils.InitRedis(fmt.Sprintf("%s:%s", cacheConfig.Domain, cacheConfig.Port), pass, 0)
+		sharedUtils.InitRedis(fmt.Sprintf("%s:%s", cacheConfig.Domain, cacheConfig.Port), pass, 0)
 	}
 
 	// Resolve Port (Environment Variable overrides config)
@@ -141,14 +141,14 @@ func main() {
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	// Mark service as ready
-	utils.SetHealthStatus("OK", "Service is running normally")
+	sharedUtils.SetHealthStatus("OK", "Service is running normally")
 
 	// Block here until signal received
 	<-stop
 	log.Println("Shutting down service...")
 
 	// Graceful cleanup
-	utils.SetHealthStatus("SHUTTING_DOWN", "Service is shutting down")
+	sharedUtils.SetHealthStatus("SHUTTING_DOWN", "Service is shutting down")
 	cancel() // Signals any background goroutines to stop
 
 	// Give the HTTP server 5 seconds to finish current requests
