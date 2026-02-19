@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/EasterCompany/dex-go-utils/network"
+	sharedUtils "github.com/EasterCompany/dex-go-utils/utils"
 	"github.com/EasterCompany/dex-web-service/config"
 	"github.com/EasterCompany/dex-web-service/endpoints"
 	"github.com/EasterCompany/dex-web-service/utils"
@@ -68,7 +69,7 @@ func main() {
 	}
 
 	// Ensure only one instance is running
-	release, err := utils.AcquireSingleInstanceLock(ServiceName)
+	release, err := sharedUtils.AcquireSingleInstanceLock(ServiceName)
 	if err != nil {
 		log.Fatalf("FATAL: %v", err)
 	}
