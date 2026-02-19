@@ -32,7 +32,7 @@ var (
 )
 
 func main() {
-	sharedUtils.SetVersion(version, branch, commit, buildDate, buildYear, buildHash, arch)
+	sharedUtils.SetVersion(version, branch, commit, buildDate, arch)
 
 	// Handle version/help commands first (before flag parsing)
 	if len(os.Args) > 1 {
@@ -55,7 +55,7 @@ func main() {
 	flag.Parse()
 
 	// Set the version for the service.
-	sharedUtils.SetVersion(version, branch, commit, buildDate, buildYear, buildHash, arch)
+	sharedUtils.SetVersion(version, branch, commit, buildDate, arch)
 
 	// Load the service map and find our own configuration.
 	serviceMap, err := config.LoadServiceMap()
@@ -82,7 +82,7 @@ func main() {
 		if cacheConfig.Credentials != nil {
 			pass = cacheConfig.Credentials.Password
 		}
-		sharedUtils.InitRedis(fmt.Sprintf("%s:%s", cacheConfig.Domain, cacheConfig.Port), pass, 0)
+		utils.InitRedis(fmt.Sprintf("%s:%s", cacheConfig.Domain, cacheConfig.Port), pass, 0)
 	}
 
 	// Resolve Port (Environment Variable overrides config)
