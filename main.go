@@ -122,7 +122,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:         addr,
-		Handler:      mux, // No CORS middleware needed initially, can add later
+		Handler:      network.AuthMiddleware(mux), // No CORS middleware needed initially, can add later
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
