@@ -6,7 +6,7 @@ require (
 	github.com/EasterCompany/dex-go-utils v0.0.0
 	github.com/chromedp/chromedp v0.14.2
 	github.com/redis/go-redis/v9 v9.17.3
-	golang.org/x/net v0.48.0
+	golang.org/x/net v0.49.0
 )
 
 replace github.com/EasterCompany/dex-go-utils => ../dex-go-utils
@@ -20,6 +20,7 @@ require (
 	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
 	github.com/gobwas/ws v1.4.0 // indirect
-	golang.org/x/sys v0.39.0 // indirect
-	golang.org/x/text v0.32.0 // indirect
+	golang.org/x/crypto v0.48.0 // indirect
+	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/text v0.34.0 // indirect
 )

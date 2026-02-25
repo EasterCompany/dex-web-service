@@ -120,28 +120,19 @@ func main() {
 	bindAddr := network.GetBestBindingAddress()
 	addr := fmt.Sprintf("%s:%d", bindAddr, port)
 
-	srv := &http.Server{
-		Addr:         addr,
-		Handler:      network.AuthMiddleware(mux), // No CORS middleware needed initially, can add later
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
-	}
+	// Mark service as ready
+	sharedUtils.SetHealthStatus("OK", "Service is running normally")
 
-	// Start HTTP server in a goroutine
+	// Start Dual-Stack Secure Server
 	go func() {
-		fmt.Printf("Starting %s on %s\n", ServiceName, addr)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("HTTP server crashed: %v", err)
+		if err := network.ListenAndServeDualStack(addr, network.AuthMiddleware(mux)); err != nil {
+			log.Fatalf("Network server failed: %v", err)
 		}
 	}()
 
 	// Wait for shutdown signal (SIGTERM from systemd or SIGINT from Ctrl+C)
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-
-	// Mark service as ready
-	sharedUtils.SetHealthStatus("OK", "Service is running normally")
 
 	// Block here until signal received
 	<-stop
