@@ -142,13 +142,5 @@ func main() {
 	sharedUtils.SetHealthStatus("SHUTTING_DOWN", "Service is shutting down")
 	cancel() // Signals any background goroutines to stop
 
-	// Give the HTTP server 5 seconds to finish current requests
-	shutdownCtx, shutdownCancel := context.WithTimeout(ctx, 5*time.Second) // Use main ctx as parent
-	defer shutdownCancel()
-
-	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Printf("HTTP shutdown error: %v", err)
-	}
-
 	log.Println("Service exited cleanly")
 }
