@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -21,23 +20,21 @@ import (
 const ServiceName = "dex-web-service"
 
 var (
-	version   = "0.0.0"
-	branch    = "unknown"
-	commit    = "unknown"
-	buildDate = "unknown"
-	buildYear = "unknown"
-	buildHash = "unknown"
-	arch      = "unknown"
+	version   string
+	branch    string
+	commit    string
+	buildDate string
+	arch      string
 )
 
 func main() {
-	sharedUtils.SetVersion(version, branch, commit, buildDate, arch)
-
 	// Handle version/help commands first (before flag parsing)
 	if len(os.Args) > 1 {
 		arg := os.Args[1]
 		switch arg {
 		case "version", "--version", "-v":
+			// Format version like other services: major.minor.patch.branch.commit.buildDate.arch
+			sharedUtils.SetVersion(version, branch, commit, buildDate, arch)
 			fmt.Println(sharedUtils.GetVersion().Str)
 			os.Exit(0)
 		case "help", "--help", "-h":
@@ -135,7 +132,6 @@ func main() {
 
 	// Graceful cleanup
 	sharedUtils.SetHealthStatus("SHUTTING_DOWN", "Service is shutting down")
-	cancel() // Signals any background goroutines to stop
 
 	log.Println("Service exited cleanly")
 }
