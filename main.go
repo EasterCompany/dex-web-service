@@ -10,7 +10,6 @@ import (
 	"os/signal"
 	"strconv"
 	"syscall"
-	"time"
 
 	"github.com/EasterCompany/dex-go-utils/network"
 	sharedUtils "github.com/EasterCompany/dex-go-utils/utils"
@@ -94,10 +93,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("FATAL: Invalid port '%s': %v", portStr, err)
 	}
-
-	// Create a context for graceful shutdown
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	// Configure HTTP server
 	mux := http.NewServeMux()
