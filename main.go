@@ -71,14 +71,12 @@ func main() {
 	}
 	defer release()
 
-	// Find local-cache-0 for caching
-	cacheConfig, _ := serviceMap.ResolveService("local-cache-0")
-	if cacheConfig != nil {
-		pass := ""
-		if cacheConfig.Credentials != nil {
-			pass = cacheConfig.Credentials.Password
-		}
-		utils.InitRedis(fmt.Sprintf("%s:%s", cacheConfig.Domain, cacheConfig.Port), pass, 0)
+	// Initialize Redis for caching
+	rdb, err := sharedUtils.GetRedisClient(context.Background(), serviceMap, "stem-cache")
+	if err != nil {
+		log.Printf("Warning: Could not initialize Redis for caching: %v", err)
+	} else {
+		utils.RDB = rdb
 	}
 
 	// Resolve Port (Environment Variable overrides config)
