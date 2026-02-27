@@ -12,6 +12,7 @@ require (
 replace github.com/EasterCompany/dex-go-utils => ../dex-go-utils
 
 require (
+	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/chromedp/cdproto v0.0.0-20250724212937-08a3db8b4327 // indirect
 	github.com/chromedp/sysutil v1.1.0 // indirect
