@@ -53,7 +53,7 @@ func MetadataHandler(w http.ResponseWriter, r *http.Request) {
 	var rawHTML string
 
 	// Try cache first
-	rawHTML, err = utils.GetCachedPage(ctx, targetURL)
+	rawHTML, err = utils.GetWebViewCache(ctx, targetURL)
 	if err != nil {
 		// Fetch the URL content
 		client := &http.Client{Timeout: 10 * time.Second}
@@ -95,7 +95,7 @@ func MetadataHandler(w http.ResponseWriter, r *http.Request) {
 		rawHTML = string(bodyBytes)
 
 		// Store in cache
-		_ = utils.SetCachedPage(ctx, targetURL, rawHTML)
+		_ = utils.SetWebViewCache(ctx, targetURL, rawHTML)
 	}
 
 	// Parse HTML from string

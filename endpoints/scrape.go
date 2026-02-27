@@ -35,7 +35,7 @@ func ScrapeHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	// Try cache first
-	rawHTML, err = utils.GetCachedPage(ctx, targetURL)
+	rawHTML, err = utils.GetWebViewCache(ctx, targetURL)
 	if err != nil {
 		// Fetch URL if not in cache
 		client := &http.Client{Timeout: 15 * time.Second}
@@ -74,7 +74,7 @@ func ScrapeHandler(w http.ResponseWriter, r *http.Request) {
 		rawHTML = string(bodyBytes)
 
 		// Store in cache
-		_ = utils.SetCachedPage(ctx, targetURL, rawHTML)
+		_ = utils.SetWebViewCache(ctx, targetURL, rawHTML)
 	}
 
 	// Parse HTML from string
