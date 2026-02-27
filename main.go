@@ -72,12 +72,12 @@ func main() {
 	}
 	defer release()
 
-	// Initialize Redis for caching
-	rdb, err := sharedUtils.GetRedisClient(context.Background(), serviceMap, "stem-cache")
+	// Initialize Redis for caching via Biological SDK
+	brain, err := network.NewBrain("web")
 	if err != nil {
-		log.Printf("Warning: Could not initialize Redis for caching: %v", err)
+		log.Printf("Warning: Could not initialize brain for web caching: %v", err)
 	} else {
-		utils.RDB = rdb
+		utils.RDB = brain.Stem().Client()
 	}
 
 	// Resolve Port (Environment Variable overrides config)
